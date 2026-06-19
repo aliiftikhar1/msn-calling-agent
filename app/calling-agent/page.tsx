@@ -181,30 +181,30 @@ export default function CallingAgentPage() {
   };
 
   return (
-    <div className="h-screen w-screen bg-[#0A0A0A] text-neutral-100 font-sans relative overflow-hidden flex flex-col">
+    <div className="h-screen w-full bg-[#0A0A0A] text-neutral-100 font-sans relative overflow-hidden flex flex-col">
       {/* Background Effects */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Top Header */}
-      <header className="relative z-10 w-full p-4 lg:p-6 flex flex-col items-center justify-center text-center shrink-0">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-neutral-400 mb-4 tracking-wide uppercase">
+      <header className="relative z-10 w-full pt-4 pb-2 px-4 flex flex-col items-center justify-center text-center shrink-0">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-neutral-400 mb-2 tracking-wide uppercase">
           <Activity className="w-3.5 h-3.5 text-blue-400" />
           MSN Calling Agent
         </div>
-        <h1 className="text-4xl lg:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 mb-3">
+        <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-1">
           MSN Developers
         </h1>
-        <p className="text-neutral-400 text-sm md:text-base max-w-lg mx-auto">
+        <p className="text-neutral-400 text-sm max-w-lg mx-auto">
           AI-powered client qualification and sales call assistant. Secure internal calling console for MSN Developers.
         </p>
       </header>
 
       {/* Main Content Layout */}
-      <main className="relative z-10 flex-1 min-h-0 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 lg:px-8 pb-6 gap-6">
+      <main className="relative z-10 flex-1 min-h-0 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 lg:px-8 pb-4 gap-4">
         
         {/* Left/Center Stage: Call Controls */}
-        <div className="flex-[1.5] min-h-0 flex flex-col items-center justify-center p-4 lg:p-8 bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-xl relative">
+        <div className="flex-[1.5] min-h-0 flex flex-col items-center justify-center p-4 lg:p-6 bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-xl relative">
           
           <div className="absolute top-6 left-6 flex flex-col gap-3">
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border backdrop-blur-md transition-colors ${getStatusColor()}`}>
@@ -230,7 +230,7 @@ export default function CallingAgentPage() {
           </div>
 
           {/* Central Control Button */}
-          <div className="relative mt-12 flex flex-col items-center justify-center h-64 w-64">
+          <div className="relative mt-16 lg:mt-8 flex flex-col items-center justify-center h-40 w-40 lg:h-52 lg:w-52 shrink-0">
             
             {/* Animated Rings when active */}
             {isCallActive && (
@@ -245,18 +245,18 @@ export default function CallingAgentPage() {
             {!isCallActive ? (
               <button
                 onClick={startCall}
-                className="relative z-10 w-32 h-32 rounded-full bg-gradient-to-b from-blue-500 to-blue-700 shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-blue-500 to-blue-700 shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
-                <Phone className="w-10 h-10 text-white fill-current opacity-90 group-hover:opacity-100 transition-opacity" />
-                <span className="text-white font-bold text-sm tracking-wide">START</span>
+                <Phone className="w-8 h-8 lg:w-10 lg:h-10 text-white fill-current opacity-90 group-hover:opacity-100 transition-opacity" />
+                <span className="text-white font-bold text-xs lg:text-sm tracking-wide">START</span>
               </button>
             ) : (
               <button
                 onClick={endCall}
-                className="relative z-10 w-32 h-32 rounded-full bg-gradient-to-b from-red-500 to-red-700 shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-red-400/50 group"
+                className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-red-500 to-red-700 shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-red-400/50 group"
               >
-                <PhoneOff className="w-10 h-10 text-white opacity-90 group-hover:opacity-100 transition-opacity" />
-                <span className="text-white font-bold text-sm tracking-wide">END</span>
+                <PhoneOff className="w-8 h-8 lg:w-10 lg:h-10 text-white opacity-90 group-hover:opacity-100 transition-opacity" />
+                <span className="text-white font-bold text-xs lg:text-sm tracking-wide">END</span>
               </button>
             )}
             
