@@ -8,8 +8,8 @@ import {
   ChevronUp, ChevronDown, ArrowDown,
 } from "lucide-react";
 
-const ASSISTANT_ID = "3015662c-9835-404d-b3b0-1dbde171cef8";
-const VOICE_AGENT_PUBLIC_KEY = "d291a8c5-b555-4fe5-bef6-2d6c3e56c3e1";
+const ASSISTANT_ID = "88930384-2394-4dcb-8fb3-bbbfca502996";
+const VOICE_AGENT_PUBLIC_KEY = "53bf70cd-00ff-48b1-b4d5-08556b8011b9";
 
 /** How many px from the bottom counts as "at bottom" */
 const SCROLL_THRESHOLD = 60;
