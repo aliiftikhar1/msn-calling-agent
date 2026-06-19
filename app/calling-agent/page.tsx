@@ -229,46 +229,50 @@ export default function CallingAgentPage() {
             </div>
           </div>
 
-          {/* Central Control Button */}
-          <div className="relative mt-16 lg:mt-8 flex flex-col items-center justify-center h-40 w-40 lg:h-52 lg:w-52 shrink-0">
-            
-            {/* Animated Rings when active */}
-            {isCallActive && (
-              <>
-                <div className="absolute inset-0 rounded-full border border-blue-500/30 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
-                <div className="absolute inset-4 rounded-full border border-indigo-500/40 animate-[ping_2.5s_cubic-bezier(0,0,0.2,1)_infinite]" />
-                <div className="absolute inset-8 rounded-full border border-blue-400/20 animate-pulse" />
-              </>
-            )}
+          {/* Central Control + Waveform */}
+          <div className="flex flex-col items-center justify-center gap-6">
 
-            {/* Main Button */}
-            {!isCallActive ? (
-              <button
-                onClick={startCall}
-                className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-blue-500 to-blue-700 shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed group"
-              >
-                <Phone className="w-8 h-8 lg:w-10 lg:h-10 text-white fill-current opacity-90 group-hover:opacity-100 transition-opacity" />
-                <span className="text-white font-bold text-xs lg:text-sm tracking-wide">START</span>
-              </button>
-            ) : (
-              <button
-                onClick={endCall}
-                className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-red-500 to-red-700 shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-red-400/50 group"
-              >
-                <PhoneOff className="w-8 h-8 lg:w-10 lg:h-10 text-white opacity-90 group-hover:opacity-100 transition-opacity" />
-                <span className="text-white font-bold text-xs lg:text-sm tracking-wide">END</span>
-              </button>
-            )}
-            
-            {/* Waveform Visualization (Simulated) */}
-            <div className="absolute -bottom-16 w-full flex items-center justify-center gap-1 h-12">
+            {/* Button with rings */}
+            <div className="relative flex items-center justify-center w-40 h-40 lg:w-52 lg:h-52 shrink-0">
+
+              {/* Animated Rings when active */}
+              {isCallActive && (
+                <>
+                  <div className="absolute inset-0 rounded-full border border-blue-500/30 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
+                  <div className="absolute inset-4 rounded-full border border-indigo-500/40 animate-[ping_2.5s_cubic-bezier(0,0,0.2,1)_infinite]" />
+                  <div className="absolute inset-8 rounded-full border border-blue-400/20 animate-pulse" />
+                </>
+              )}
+
+              {/* Main Button */}
+              {!isCallActive ? (
+                <button
+                  onClick={startCall}
+                  className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-blue-500 to-blue-700 shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed group"
+                >
+                  <Phone className="w-8 h-8 lg:w-10 lg:h-10 text-white fill-current opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-white font-bold text-xs lg:text-sm tracking-wide">START</span>
+                </button>
+              ) : (
+                <button
+                  onClick={endCall}
+                  className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-red-500 to-red-700 shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-red-400/50 group"
+                >
+                  <PhoneOff className="w-8 h-8 lg:w-10 lg:h-10 text-white opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-white font-bold text-xs lg:text-sm tracking-wide">END</span>
+                </button>
+              )}
+            </div>
+
+            {/* Waveform Visualization */}
+            <div className="w-48 flex items-center justify-center gap-1 h-8">
               {isCallActive ? (
                 Array.from({ length: 15 }).map((_, i) => (
-                  <div 
-                    key={i} 
+                  <div
+                    key={i}
                     className={`w-1.5 rounded-full ${callState === 'Speaking' ? 'bg-emerald-400' : callState === 'Listening' ? 'bg-indigo-400' : 'bg-blue-400'}`}
                     style={{
-                      height: `${Math.max(10, Math.random() * 40)}px`,
+                      height: `${Math.max(10, Math.random() * 32)}px`,
                       animation: `pulse ${0.5 + Math.random()}s ease-in-out infinite alternate`
                     }}
                   />
@@ -280,6 +284,7 @@ export default function CallingAgentPage() {
 
           </div>
         </div>
+
 
         {/* Right Stage: Activity Feed */}
         <div className="flex-1 min-h-0 flex flex-col bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-xl overflow-hidden">
