@@ -168,7 +168,15 @@ export default function CallingAgentPage() {
       vapiRef.current = vapi;
 
       vapi.on("call-start",  () => { setCallState("Live Call");   addLog("system", "Call started"); });
-      vapi.on("call-end",    () => { setCallState("Call Ended");  addLog("system", "Call ended"); vapiRef.current = null; });
+      vapi.on("call-end", () => {
+        // Only add "Call ended" log if the user didn't already trigger endCall
+        // (endCall sets state to "Call Ended" immediately, so we check prev state)
+        setCallState((prev) => {
+          if (prev !== "Call Ended") addLog("system", "Call ended");
+          return "Call Ended";
+        });
+        vapiRef.current = null;
+      });
       vapi.on("speech-start", () => setCallState("Speaking"));
       vapi.on("speech-end",   () => setCallState("Live Call"));
 
@@ -200,7 +208,14 @@ export default function CallingAgentPage() {
   };
 
   const endCall = () => {
-    if (vapiRef.current) { vapiRef.current.stop(); addLog("system", "Ending call..."); }
+    if (!vapiRef.current) return;
+    // Immediately update UI — don't rely solely on the SDK call-end event
+    addLog("system", "Ending call...");
+    setCallState("Call Ended");
+    // Grab ref, clear it, then stop so call-end event finds ref already null
+    const vapi = vapiRef.current;
+    vapiRef.current = null;
+    try { vapi.stop(); } catch { /* already stopped */ }
   };
 
   // ─── helpers ────────────────────────────────────────────────────────────────
