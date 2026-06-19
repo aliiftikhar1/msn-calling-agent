@@ -19,7 +19,7 @@ export default function CallingAgentPage() {
   const vapiRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const logIdCounter = useRef(0);
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const logsContainerRef = useRef<HTMLDivElement>(null);
 
   const addLog = (role: LogEntry["role"], message: string) => {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -45,6 +45,8 @@ export default function CallingAgentPage() {
     };
     checkMic();
     addLog("system", "Agent ready");
+    // Reset page scroll to top on mount
+    window.scrollTo(0, 0);
 
     return () => {
       if (vapiRef.current) {
@@ -66,8 +68,9 @@ export default function CallingAgentPage() {
   }, [callState]);
 
   useEffect(() => {
-    if (logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    // Scroll only within the activity feed container, never the page
+    if (logsContainerRef.current) {
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
     }
   }, [logs]);
 
@@ -295,7 +298,7 @@ export default function CallingAgentPage() {
             </h3>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div ref={logsContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
             {logs.length === 0 ? (
               <div className="h-full flex items-center justify-center text-neutral-600 text-sm">
                 Awaiting connection...
@@ -332,7 +335,6 @@ export default function CallingAgentPage() {
                 </div>
               ))
             )}
-            <div ref={logsEndRef} />
           </div>
         </div>
 
