@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,24 +12,43 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Hard no-scroll at document level ── */
 html,
 body {
   height: 100%;
+  /* Use dvh so mobile browsers account for their chrome (address bar, etc.) */
+  height: 100dvh;
   overflow: hidden;
   margin: 0;
   padding: 0;
+  /* Respect iOS/Android notch / home indicator */
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Prevent iOS text size adjustment on rotation */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
+/* ── Prevent double-tap zoom on buttons / interactive elements ── */
+button,
+a {
+  touch-action: manipulation;
+}
+
+/* ── Remove iOS tap highlight ── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Smooth momentum scrolling inside overflow-y-auto containers ── */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}

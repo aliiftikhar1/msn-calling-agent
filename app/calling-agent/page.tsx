@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Vapi from "@vapi-ai/web";
-import { Mic, MicOff, Phone, PhoneOff, Activity, Clock, AlertCircle } from "lucide-react";
+import { Mic, MicOff, Phone, PhoneOff, Activity, Clock, AlertCircle, ChevronUp, ChevronDown } from "lucide-react";
 
 const ASSISTANT_ID = "3015662c-9835-404d-b3b0-1dbde171cef8";
 const VOICE_AGENT_PUBLIC_KEY = "d291a8c5-b555-4fe5-bef6-2d6c3e56c3e1";
@@ -15,19 +15,19 @@ export default function CallingAgentPage() {
   const [micStatus, setMicStatus] = useState<"Checking" | "Granted" | "Denied">("Checking");
   const [duration, setDuration] = useState(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  
+  const [feedOpen, setFeedOpen] = useState(false); // mobile drawer toggle
+
   const vapiRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const logIdCounter = useRef(0);
   const logsContainerRef = useRef<HTMLDivElement>(null);
 
   const addLog = (role: LogEntry["role"], message: string) => {
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     setLogs((prev) => [...prev, { id: logIdCounter.current++, role, message, time }]);
   };
 
   useEffect(() => {
-    // Check microphone permission
     const checkMic = async () => {
       try {
         if (navigator.permissions && navigator.permissions.query) {
@@ -37,15 +37,14 @@ export default function CallingAgentPage() {
             setMicStatus(res.state === "granted" ? "Granted" : res.state === "denied" ? "Denied" : "Checking");
           };
         } else {
-          setMicStatus("Checking"); // Fallback if query not supported
+          setMicStatus("Checking");
         }
-      } catch (e) {
+      } catch {
         setMicStatus("Checking");
       }
     };
     checkMic();
     addLog("system", "Agent ready");
-    // Reset page scroll to top on mount
     window.scrollTo(0, 0);
 
     return () => {
@@ -68,10 +67,11 @@ export default function CallingAgentPage() {
   }, [callState]);
 
   useEffect(() => {
-    // Scroll only within the activity feed container, never the page
     if (logsContainerRef.current) {
       logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
     }
+    // Auto-open feed on mobile when new logs arrive during a call
+    if (logs.length > 1) setFeedOpen(true);
   }, [logs]);
 
   const startCall = async () => {
@@ -80,21 +80,17 @@ export default function CallingAgentPage() {
       setCallState("Error");
       return;
     }
-
     try {
       setCallState("Connecting");
       setDuration(0);
-      setLogs([{ id: logIdCounter.current++, role: "system", message: "Connecting call", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }]);
+      setLogs([{ id: logIdCounter.current++, role: "system", message: "Connecting call", time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) }]);
 
-      // Request mic permission actively if not granted yet
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         setMicStatus("Granted");
         addLog("system", "Microphone connected");
-        // We stop the stream right away, the SDK will request its own.
-        // This was just to ensure permission is granted before proceeding.
-        stream.getTracks().forEach(track => track.stop());
-      } catch (micErr) {
+        stream.getTracks().forEach((track) => track.stop());
+      } catch {
         setMicStatus("Denied");
         addLog("error", "Microphone access is required to start the call.");
         setCallState("Error");
@@ -104,27 +100,10 @@ export default function CallingAgentPage() {
       const vapi = new Vapi(VOICE_AGENT_PUBLIC_KEY);
       vapiRef.current = vapi;
 
-      vapi.on("call-start", () => {
-        setCallState("Live Call");
-        addLog("system", "Call started");
-      });
-
-      vapi.on("call-end", () => {
-        setCallState("Call Ended");
-        addLog("system", "Call ended");
-        vapiRef.current = null;
-      });
-
-      vapi.on("speech-start", () => {
-        // SDK doesn't always specify who started speaking easily in this event,
-        // but typically we can assume agent is speaking if not user.
-        // We'll set state to Speaking/Listening based on message events usually, but for UI feedback:
-        setCallState("Speaking"); 
-      });
-
-      vapi.on("speech-end", () => {
-        setCallState("Live Call");
-      });
+      vapi.on("call-start", () => { setCallState("Live Call"); addLog("system", "Call started"); });
+      vapi.on("call-end", () => { setCallState("Call Ended"); addLog("system", "Call ended"); vapiRef.current = null; });
+      vapi.on("speech-start", () => setCallState("Speaking"));
+      vapi.on("speech-end", () => setCallState("Live Call"));
 
       vapi.on("message", (msg: any) => {
         if (msg.type === "transcript" && msg.transcriptType === "final") {
@@ -146,7 +125,6 @@ export default function CallingAgentPage() {
       });
 
       await vapi.start(ASSISTANT_ID);
-
     } catch (err: any) {
       setCallState("Error");
       addLog("error", `Failed to connect: ${err.message || err}`);
@@ -169,7 +147,6 @@ export default function CallingAgentPage() {
 
   const isCallActive = callState === "Connecting" || callState === "Live Call" || callState === "Listening" || callState === "Speaking";
 
-  // Dynamic Styles
   const getStatusColor = () => {
     switch (callState) {
       case "Ready":
@@ -183,62 +160,123 @@ export default function CallingAgentPage() {
     }
   };
 
+  const getMicColor = () =>
+    micStatus === "Granted"
+      ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+      : micStatus === "Denied"
+      ? "text-red-400 bg-red-500/10 border-red-500/20"
+      : "text-neutral-400 bg-neutral-500/10 border-neutral-500/20";
+
+  /* ─── Activity Feed (shared between desktop panel & mobile drawer) ─── */
+  const ActivityFeedContent = () => (
+    <div ref={logsContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      {logs.length === 0 ? (
+        <div className="h-full flex items-center justify-center text-neutral-600 text-sm">
+          Awaiting connection...
+        </div>
+      ) : (
+        logs.map((log) => (
+          <div key={log.id} className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex gap-3">
+            <div className="mt-1 flex-shrink-0">
+              {log.role === "system" && <div className="w-2 h-2 rounded-full bg-neutral-500 mt-1.5" />}
+              {log.role === "error" && <AlertCircle className="w-4 h-4 text-red-500" />}
+              {log.role === "user" && <Mic className="w-4 h-4 text-indigo-400" />}
+              {log.role === "agent" && <Phone className="w-4 h-4 text-emerald-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between mb-0.5 gap-2">
+                <span className={`text-xs font-bold uppercase tracking-wider truncate ${
+                  log.role === "system" ? "text-neutral-500" :
+                  log.role === "error" ? "text-red-500" :
+                  log.role === "user" ? "text-indigo-400" : "text-emerald-400"
+                }`}>
+                  {log.role === "agent" ? "Calling Agent" : log.role === "user" ? "Client" : log.role}
+                </span>
+                <span className="text-[10px] text-neutral-600 font-mono shrink-0">{log.time}</span>
+              </div>
+              <p className={`text-sm leading-relaxed break-words ${
+                log.role === "system" ? "text-neutral-400" :
+                log.role === "error" ? "text-red-400" : "text-neutral-200"
+              }`}>
+                {log.message}
+              </p>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+
   return (
-    <div className="h-screen w-full bg-[#0A0A0A] text-neutral-100 font-sans relative overflow-hidden flex flex-col">
-      {/* Background Effects */}
+    <div className="h-[100dvh] w-full bg-[#0A0A0A] text-neutral-100 font-sans relative overflow-hidden flex flex-col">
+
+      {/* Background Glows */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none" />
 
-      {/* Top Header */}
-      <header className="relative z-10 w-full pt-4 pb-2 px-4 flex flex-col items-center justify-center text-center shrink-0">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-neutral-400 mb-2 tracking-wide uppercase">
-          <Activity className="w-3.5 h-3.5 text-blue-400" />
+      {/* ══════════════════════════════════════════
+          HEADER
+      ══════════════════════════════════════════ */}
+      <header className="relative z-10 w-full pt-3 pb-2 px-4 flex flex-col items-center justify-center text-center shrink-0">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] sm:text-xs font-medium text-neutral-400 mb-1.5 tracking-wide uppercase">
+          <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-400" />
           MSN Calling Agent
         </div>
-        <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-1">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white mb-0.5 sm:mb-1">
           MSN Developers
         </h1>
-        <p className="text-neutral-400 text-sm max-w-lg mx-auto">
+        {/* Hide subtitle on very small screens to save space */}
+        <p className="hidden sm:block text-neutral-400 text-xs sm:text-sm max-w-lg mx-auto">
           AI-powered client qualification and sales call assistant. Secure internal calling console for MSN Developers.
         </p>
       </header>
 
-      {/* Main Content Layout */}
-      <main className="relative z-10 flex-1 min-h-0 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-4 lg:px-8 pb-4 gap-4">
-        
-        {/* Left/Center Stage: Call Controls */}
-        <div className="flex-[1.5] min-h-0 flex flex-col items-center justify-center p-4 lg:p-6 bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-xl relative">
-          
-          <div className="absolute top-6 left-6 flex flex-col gap-3">
-            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border backdrop-blur-md transition-colors ${getStatusColor()}`}>
-              <div className={`w-2 h-2 rounded-full ${callState === 'Error' ? 'bg-red-500' : isCallActive ? 'bg-current animate-pulse' : 'bg-neutral-500'}`} />
-              {callState}
-            </div>
-            
-            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border backdrop-blur-md transition-colors ${
-              micStatus === "Granted" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" :
-              micStatus === "Denied" ? "text-red-400 bg-red-500/10 border-red-500/20" :
-              "text-neutral-400 bg-neutral-500/10 border-neutral-500/20"
-            }`}>
-              {micStatus === "Granted" ? <Mic className="w-3.5 h-3.5" /> : <MicOff className="w-3.5 h-3.5" />}
-              Mic: {micStatus}
-            </div>
-          </div>
+      {/* ══════════════════════════════════════════
+          MAIN — desktop: row | mobile: column
+      ══════════════════════════════════════════ */}
+      <main className="relative z-10 flex-1 min-h-0 flex flex-col lg:flex-row max-w-7xl mx-auto w-full px-3 sm:px-4 lg:px-8 pb-3 sm:pb-4 gap-3 sm:gap-4">
 
-          <div className="absolute top-6 right-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 font-mono text-xl text-neutral-200 tracking-wider">
-              <Clock className="w-4 h-4 text-neutral-400" />
+        {/* ── CALL CONTROLS PANEL ── */}
+        <div className={`relative flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl sm:rounded-3xl backdrop-blur-xl overflow-hidden
+          transition-all duration-300
+          ${feedOpen
+            /* mobile: shrink to a compact strip when feed is open */
+            ? "flex-none"
+            /* mobile: take all available space when feed is closed */
+            : "flex-1 min-h-0"
+          }
+          lg:flex-[1.5] lg:min-h-0`}
+        >
+          {/* Status row — compact on mobile, absolute on lg */}
+          <div className="flex items-center justify-between px-3 sm:px-4 pt-3 sm:pt-0 lg:absolute lg:top-6 lg:left-6 lg:right-6 lg:pt-0">
+            <div className="flex items-center gap-2">
+              {/* Call state badge */}
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold border backdrop-blur-md transition-colors ${getStatusColor()}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${callState === "Error" ? "bg-red-500" : isCallActive ? "bg-current animate-pulse" : "bg-neutral-500"}`} />
+                {callState}
+              </div>
+              {/* Mic badge */}
+              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold border backdrop-blur-md transition-colors ${getMicColor()}`}>
+                {micStatus === "Granted" ? <Mic className="w-3 h-3" /> : <MicOff className="w-3 h-3" />}
+                <span className="hidden sm:inline">Mic: </span>{micStatus}
+              </div>
+            </div>
+
+            {/* Timer */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 font-mono text-sm sm:text-base text-neutral-200 tracking-widest">
+              <Clock className="w-3.5 h-3.5 text-neutral-400" />
               {formatTime(duration)}
             </div>
           </div>
 
-          {/* Central Control + Waveform */}
-          <div className="flex flex-col items-center justify-center gap-6">
-
-            {/* Button with rings */}
-            <div className="relative flex items-center justify-center w-40 h-40 lg:w-52 lg:h-52 shrink-0">
-
-              {/* Animated Rings when active */}
+          {/* Centre: button + waveform */}
+          <div className={`flex-1 min-h-0 flex flex-col items-center justify-center
+            gap-4 sm:gap-6
+            py-4 sm:py-6 lg:py-8
+            ${feedOpen ? "py-3 sm:py-4" : ""}`}
+          >
+            {/* Ring container */}
+            <div className="relative flex items-center justify-center w-32 h-32 sm:w-40 sm:h-40 lg:w-52 lg:h-52 shrink-0">
               {isCallActive && (
                 <>
                   <div className="absolute inset-0 rounded-full border border-blue-500/30 animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite]" />
@@ -247,95 +285,102 @@ export default function CallingAgentPage() {
                 </>
               )}
 
-              {/* Main Button */}
               {!isCallActive ? (
                 <button
                   onClick={startCall}
-                  className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-blue-500 to-blue-700 shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  aria-label="Start call"
+                  className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-blue-500 to-blue-700
+                    shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)]
+                    active:scale-95 hover:scale-105 transition-all duration-300
+                    flex flex-col items-center justify-center gap-1.5 sm:gap-2
+                    border border-blue-400/50 group touch-manipulation"
                 >
-                  <Phone className="w-8 h-8 lg:w-10 lg:h-10 text-white fill-current opacity-90 group-hover:opacity-100 transition-opacity" />
-                  <span className="text-white font-bold text-xs lg:text-sm tracking-wide">START</span>
+                  <Phone className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-white fill-current opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-white font-bold text-[10px] sm:text-xs lg:text-sm tracking-wide">START</span>
                 </button>
               ) : (
                 <button
                   onClick={endCall}
-                  className="relative z-10 w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-red-500 to-red-700 shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-red-400/50 group"
+                  aria-label="End call"
+                  className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-b from-red-500 to-red-700
+                    shadow-[0_0_40px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_rgba(239,68,68,0.5)]
+                    active:scale-95 hover:scale-105 transition-all duration-300
+                    flex flex-col items-center justify-center gap-1.5 sm:gap-2
+                    border border-red-400/50 group touch-manipulation"
                 >
-                  <PhoneOff className="w-8 h-8 lg:w-10 lg:h-10 text-white opacity-90 group-hover:opacity-100 transition-opacity" />
-                  <span className="text-white font-bold text-xs lg:text-sm tracking-wide">END</span>
+                  <PhoneOff className="w-7 h-7 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-white opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <span className="text-white font-bold text-[10px] sm:text-xs lg:text-sm tracking-wide">END</span>
                 </button>
               )}
             </div>
 
-            {/* Waveform Visualization */}
-            <div className="w-48 flex items-center justify-center gap-1 h-8">
+            {/* Waveform / status text */}
+            <div className="w-40 sm:w-48 flex items-center justify-center gap-1 h-6 sm:h-8">
               {isCallActive ? (
-                Array.from({ length: 15 }).map((_, i) => (
+                Array.from({ length: 13 }).map((_, i) => (
                   <div
                     key={i}
-                    className={`w-1.5 rounded-full ${callState === 'Speaking' ? 'bg-emerald-400' : callState === 'Listening' ? 'bg-indigo-400' : 'bg-blue-400'}`}
+                    className={`w-1 sm:w-1.5 rounded-full ${callState === "Speaking" ? "bg-emerald-400" : callState === "Listening" ? "bg-indigo-400" : "bg-blue-400"}`}
                     style={{
-                      height: `${Math.max(10, Math.random() * 32)}px`,
-                      animation: `pulse ${0.5 + Math.random()}s ease-in-out infinite alternate`
+                      height: `${Math.max(6, Math.random() * 28)}px`,
+                      animation: `pulse ${0.5 + Math.random()}s ease-in-out infinite alternate`,
                     }}
                   />
                 ))
               ) : (
-                <div className="text-neutral-600 text-xs font-medium tracking-widest uppercase">System Ready</div>
+                <div className="text-neutral-600 text-[10px] sm:text-xs font-medium tracking-widest uppercase">
+                  System Ready
+                </div>
               )}
             </div>
-
           </div>
         </div>
 
+        {/* ══════════════════════════════════════════
+            ACTIVITY FEED
+            • Desktop (lg+): fixed side panel
+            • Mobile: slide-up drawer pinned to bottom
+        ══════════════════════════════════════════ */}
 
-        {/* Right Stage: Activity Feed */}
-        <div className="flex-1 min-h-0 flex flex-col bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/5 bg-white/[0.01]">
+        {/* ── DESKTOP PANEL (hidden on mobile) ── */}
+        <div className="hidden lg:flex flex-1 min-h-0 flex-col bg-white/[0.02] border border-white/5 rounded-3xl backdrop-blur-xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.01] shrink-0">
             <h3 className="text-sm font-semibold text-neutral-200 flex items-center gap-2">
               <Activity className="w-4 h-4 text-neutral-500" />
               Activity Feed
             </h3>
           </div>
-          
-          <div ref={logsContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
-            {logs.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-neutral-600 text-sm">
-                Awaiting connection...
-              </div>
-            ) : (
-              logs.map((log) => (
-                <div key={log.id} className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex gap-3">
-                  <div className="mt-1 flex-shrink-0">
-                    {log.role === 'system' && <div className="w-2 h-2 rounded-full bg-neutral-500 mt-1.5" />}
-                    {log.role === 'error' && <AlertCircle className="w-4 h-4 text-red-500" />}
-                    {log.role === 'user' && <Mic className="w-4 h-4 text-indigo-400" />}
-                    {log.role === 'agent' && <Phone className="w-4 h-4 text-emerald-400" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between mb-0.5">
-                      <span className={`text-xs font-bold uppercase tracking-wider ${
-                        log.role === 'system' ? 'text-neutral-500' :
-                        log.role === 'error' ? 'text-red-500' :
-                        log.role === 'user' ? 'text-indigo-400' :
-                        'text-emerald-400'
-                      }`}>
-                        {log.role === 'agent' ? 'Calling Agent' : log.role === 'user' ? 'Client' : log.role}
-                      </span>
-                      <span className="text-[10px] text-neutral-600 font-mono">{log.time}</span>
-                    </div>
-                    <p className={`text-sm leading-relaxed ${
-                      log.role === 'system' ? 'text-neutral-400' :
-                      log.role === 'error' ? 'text-red-400' :
-                      'text-neutral-200'
-                    }`}>
-                      {log.message}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <ActivityFeedContent />
+        </div>
+
+        {/* ── MOBILE DRAWER (hidden on lg+) ── */}
+        <div className={`lg:hidden flex flex-col bg-white/[0.03] border border-white/8 rounded-2xl backdrop-blur-xl overflow-hidden
+          transition-all duration-300 ease-in-out
+          ${feedOpen ? "flex-1 min-h-0" : "flex-none h-12"}`}
+        >
+          {/* Drawer handle / header — always visible */}
+          <button
+            onClick={() => setFeedOpen((v) => !v)}
+            aria-label={feedOpen ? "Collapse activity feed" : "Expand activity feed"}
+            className="flex items-center justify-between px-4 py-3 shrink-0 w-full touch-manipulation active:bg-white/5 transition-colors"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold text-neutral-300">
+              <Activity className="w-3.5 h-3.5 text-neutral-500" />
+              Activity Feed
+              {logs.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold">
+                  {logs.length}
+                </span>
+              )}
+            </span>
+            {feedOpen
+              ? <ChevronDown className="w-4 h-4 text-neutral-500" />
+              : <ChevronUp className="w-4 h-4 text-neutral-500" />
+            }
+          </button>
+
+          {/* Feed content — only rendered when open */}
+          {feedOpen && <ActivityFeedContent />}
         </div>
 
       </main>
