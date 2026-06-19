@@ -245,7 +245,6 @@ export default function CallingAgentPage() {
             {!isCallActive ? (
               <button
                 onClick={startCall}
-                disabled={callState === "Connecting"}
                 className="relative z-10 w-32 h-32 rounded-full bg-gradient-to-b from-blue-500 to-blue-700 shadow-[0_0_40px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] hover:scale-105 transition-all duration-300 flex flex-col items-center justify-center gap-2 border border-blue-400/50 disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 <Phone className="w-10 h-10 text-white fill-current opacity-90 group-hover:opacity-100 transition-opacity" />
